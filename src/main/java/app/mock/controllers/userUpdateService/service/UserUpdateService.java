@@ -98,13 +98,7 @@ public class UserUpdateService {
             errorMessage = String.format("Поле %s является обязательным для заполнения",userMailFieldName);
             httpStatus = HttpStatus.BAD_REQUEST;
         }
-        //TODO продолжение бага #2 выше
-        else if (user.getUserName()!=null){
-            if (user.getUserName().length()<2 || user.getUserName().length()>50){
-                errorMessage = String.format("Длина поля %s должна быть от 2 до 50 символов включительно",userNameFieldName);
-                httpStatus = HttpStatus.BAD_REQUEST;
-            }
-        } else if (user.getUserSurname().length()<2 || user.getUserSurname().length()>50){
+        else if (user.getUserSurname().length()<2 || user.getUserSurname().length()>50){
             errorMessage = String.format("Длина поля %s должна быть от 2 до 50 символов включительно",userSurnameFieldName);
             httpStatus = HttpStatus.BAD_REQUEST;
         } else if (user.getUserMail().length()<5){
@@ -116,6 +110,13 @@ public class UserUpdateService {
         } else if (!isEmailUniqueComparingToOtherUsers(user.getUserMail(),user.getId())){
             errorMessage = String.format("Значение e-mail: %s не является уникальным и принадлежит другому пользователю",user.getUserMail());
             httpStatus = HttpStatus.BAD_REQUEST;
+        }
+        //TODO продолжение бага #2 выше
+        else if (user.getUserName()!=null){
+            if (user.getUserName().length()<2 || user.getUserName().length()>50){
+                errorMessage = String.format("Длина поля %s должна быть от 2 до 50 символов включительно",userNameFieldName);
+                httpStatus = HttpStatus.BAD_REQUEST;
+            }
         }
         return Pair.of(httpStatus,errorMessage);
     }

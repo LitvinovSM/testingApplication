@@ -54,7 +54,7 @@ public class UserCreateService {
                 }
             } catch (Exception e) {
                 errorMessage = String.format("В заголовок: %s переданы не целые числовые значения",employeeIdHeaderName);
-                httpStatus = HttpStatus.OK;
+                httpStatus = HttpStatus.BAD_REQUEST;
             }
         }
         return Pair.of(httpStatus,errorMessage);

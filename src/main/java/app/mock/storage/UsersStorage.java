@@ -49,4 +49,19 @@ public class UsersStorage {
         return null;
     }
 
+
+    /**
+     * Проверяет, содержит ли HashMap указанный e-mail для пользователей с другим идентификатором.
+     *
+     * @return true, если ключ найден, иначе false
+     */
+    public static void removeFromStorageById(String uuid) {
+        for (String key : USERS_STORAGE.keySet()) {
+            if (USERS_STORAGE.get(key).getId().equalsIgnoreCase(uuid)){
+                USERS_STORAGE.remove(key);
+            }
+        }
+    }
+
+
 }

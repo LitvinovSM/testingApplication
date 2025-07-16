@@ -47,7 +47,7 @@ public class UserCreateService {
         } else {
             try {
                 Integer employeeIdValue = Integer.parseInt(employeeIdHeaderValue);
-                //TODO: специальный баг. В требованиях значение 100 разрешено
+                //TODO: специальный баг #1. В требованиях значение 100 разрешено
                 if (employeeIdValue<1 || employeeIdValue>=100){
                     errorMessage = String.format("Значение заголовка: %s должно быть в интервале от 1 до 100 включительно",employeeIdHeaderName);
                     httpStatus = HttpStatus.BAD_REQUEST;

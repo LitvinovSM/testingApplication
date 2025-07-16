@@ -85,18 +85,25 @@ public class UserUpdateService {
         if (getUserByUuid(user.getId())==null){
             errorMessage = String.format("Пользователя с идентификатором: %s не существует",user.getId());
             httpStatus = HttpStatus.BAD_REQUEST;
-        } else if (isNullOrEmpty(user.getUserName())){
-            errorMessage = String.format("Поле %s является обязательным для заполнения",userNameFieldName);
-            httpStatus = HttpStatus.BAD_REQUEST;
-        } else if (isNullOrEmpty(user.getUserSurname())){
+        }
+        //TODO: специально оставил баг #2 - имя пользователя необязательное для заполнения
+//        else if (isNullOrEmpty(user.getUserName())){
+//            errorMessage = String.format("Поле %s является обязательным для заполнения",userNameFieldName);
+//            httpStatus = HttpStatus.BAD_REQUEST;
+//        }
+        else if (isNullOrEmpty(user.getUserSurname())){
             errorMessage = String.format("Поле %s является обязательным для заполнения",userSurnameFieldName);
             httpStatus = HttpStatus.BAD_REQUEST;
         } else if (isNullOrEmpty(user.getUserMail())){
             errorMessage = String.format("Поле %s является обязательным для заполнения",userMailFieldName);
             httpStatus = HttpStatus.BAD_REQUEST;
-        } else if (user.getUserName().length()<2 || user.getUserName().length()>50){
-            errorMessage = String.format("Длина поля %s должна быть от 2 до 50 символов включительно",userNameFieldName);
-            httpStatus = HttpStatus.BAD_REQUEST;
+        }
+        //TODO продолжение бага #2 выше
+        else if (user.getUserName()!=null){
+            if (user.getUserName().length()<2 || user.getUserName().length()>50){
+                errorMessage = String.format("Длина поля %s должна быть от 2 до 50 символов включительно",userNameFieldName);
+                httpStatus = HttpStatus.BAD_REQUEST;
+            }
         } else if (user.getUserSurname().length()<2 || user.getUserSurname().length()>50){
             errorMessage = String.format("Длина поля %s должна быть от 2 до 50 символов включительно",userSurnameFieldName);
             httpStatus = HttpStatus.BAD_REQUEST;

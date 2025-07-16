@@ -5,8 +5,10 @@ package app.mock.controllers.userCreateService.service;
 import app.mock.pojo.common.UserDAO;
 import app.mock.pojo.v1.userCreate.rq.UserCreateRqBody;
 import app.mock.pojo.v1.userCreate.rs.UserCreateRsBody;
+import app.mock.pojo.v1.userCreate.rsError.UserCreateRsErrorBody;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.util.UUID;
 
@@ -66,7 +68,8 @@ public class UserCreateService {
         try {
             user = convertJsonToObject(requestBody, UserCreateRqBody.class);
         } catch (Exception e) {
-            errorMessage = String.format("Не удалось конвертировать тело запроса в класс UserCreateRqBody. Полный текст ошибки:\n\r%s",getStackTraceAsString(e));
+            errorMessage = String.format("Не удалось конвертировать тело запроса в класс UserCreateRqBody. Полный текст ошибки: %s",getStackTraceAsString(e));
+            System.out.println(getStackTraceAsString(e));
             httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
             return Pair.of(httpStatus,errorMessage);
         }
@@ -134,5 +137,31 @@ public class UserCreateService {
                 .userSurname(userCreateRqBody.getUserSurname())
                 .build();
         return convertToJson(userCreateRsBody);
+    }
+
+    public static ResponseEntity<String> makeResponseBasedOnProcessingResult(String employeeIdHeaderValue, String employeeSystemHeaderValue,String requestBody){
+        Pair<HttpStatus,String> validationResult = makeValidation(employeeIdHeaderValue,employeeSystemHeaderValue,requestBody);
+        //Для 500 ошибки
+        if (validationResult.getLeft().equals(HttpStatus.INTERNAL_SERVER_ERROR)){
+            UserCreateRsErrorBody userCreateRsErrorBody = new UserCreateRsErrorBody(validationResult.getRight());
+            String resultBody = convertToJson(userCreateRsErrorBody);
+            return new ResponseEntity<>(
+                    resultBody, buildDefaultHttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        //Для 400 ошибки
+        else if (validationResult.getLeft().equals(HttpStatus.BAD_REQUEST)){
+            UserCreateRsErrorBody userCreateRsErrorBody = new UserCreateRsErrorBody(validationResult.getRight());
+            String resultBody = convertToJson(userCreateRsErrorBody);
+            return new ResponseEntity<>(
+                    resultBody, buildDefaultHttpHeaders(), HttpStatus.BAD_REQUEST);
+        }
+         else {
+            //Если прошли все валидации - конвертируем запрос
+            UserCreateRqBody userCreateRqBody = convertJsonToObject(requestBody,UserCreateRqBody.class);
+            //Билдим тело ответа (да, костыльно, знаю, можно было в одну строку, но мне так понятнее)
+            String responseBody = makeProcessingAndSuccessfulResponse(userCreateRqBody);
+            return new ResponseEntity<>(
+                    responseBody, buildDefaultHttpHeaders(), HttpStatus.OK);
+        }
     }
 }

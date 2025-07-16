@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 public class JsonUtil {
 
@@ -11,10 +12,15 @@ public class JsonUtil {
      * Метод конвертации объекта в Json красивого вида
      * */
     public static <T> String convertToJson(T object){
-        ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        ObjectWriter writer = mapper.writerWithDefaultPrettyPrinter();
         String json;
         try {
-            json = objectWriter.writeValueAsString(object);
+            json = writer.writeValueAsString(object)
+                    .replace("\\r\\n", "\n")  // Заменяем экранированные символы
+                    .replace("\\n", "\n")     // на реальные переносы строк;
+                    .replace("\\t", "\t");
         } catch (JsonProcessingException e) {
             System.out.println(String.format("Ошибка парсинга объекта в json. Объект:\n\r%s",object));
             json=String.format("Ошибка парсинга объекта в json. Объект:\n\r%s",object);

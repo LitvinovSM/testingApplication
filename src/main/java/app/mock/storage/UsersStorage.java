@@ -22,4 +22,31 @@ public class UsersStorage {
         return !USERS_STORAGE.containsKey(key);
     }
 
+
+    /**
+     * Проверяет, содержит ли HashMap указанный e-mail для пользователей с другим идентификатором.
+     *
+     * @return true, если ключ найден, иначе false
+     */
+    public static boolean isEmailUniqueComparingToOtherUsers(String email,String uuid) {
+        for (String key : USERS_STORAGE.keySet()) {
+            if (USERS_STORAGE.get(key).getUserMail().equalsIgnoreCase(email) && !USERS_STORAGE.get(key).getId().equalsIgnoreCase(uuid)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    /**Получение пользователя из хранилища по уникальному UUID
+     * Если находим - возвращаем пользователя, если нет - null*/
+    public static UserDAO getUserByUuid(String uuid){
+        for (String key : USERS_STORAGE.keySet()) {
+            if (USERS_STORAGE.get(key).getId().equalsIgnoreCase(uuid)){
+                return USERS_STORAGE.get(key);
+            }
+        }
+        return null;
+    }
+
 }

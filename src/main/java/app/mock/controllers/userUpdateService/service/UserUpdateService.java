@@ -1,24 +1,23 @@
-package app.mock.controllers.userCreateService.service;
-
-
+package app.mock.controllers.userUpdateService.service;
 
 import app.mock.pojo.common.UserDAO;
-import app.mock.pojo.v1.userCreate.rq.UserCreateRqBody;
-import app.mock.pojo.v1.userCreate.rs.UserCreateRsBody;
-import app.mock.pojo.v1.userCreate.rsError.UserCreateRsErrorBody;
+import app.mock.pojo.v1.userUpdate.rq.UserUpdateRqBody;
+import app.mock.pojo.v1.userUpdate.rs.UserUpdateRsBody;
+import app.mock.pojo.v1.userUpdate.rsError.UserUpdateRsErrorBody;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.UUID;
 
-import static app.mock.storage.UsersStorage.USERS_STORAGE;
-import static app.mock.storage.UsersStorage.isEmailUnique;
+import static app.mock.storage.UsersStorage.*;
 import static app.mock.utils.CommonUtil.*;
 import static app.mock.utils.JsonUtil.convertJsonToObject;
 import static app.mock.utils.JsonUtil.convertToJson;
 
-public class UserCreateService {
+
+public class UserUpdateService {
+
 
     private static final String employeeIdHeaderName = "employeeId";
     private static final String employeeSystemHeaderName = "employeeSystem";
@@ -30,7 +29,7 @@ public class UserCreateService {
     protected static Pair<HttpStatus,String> verifyRequiredHeaders(String employeeIdHeaderValue, String employeeSystemHeaderValue){
         String errorMessage = "";
         HttpStatus httpStatus = HttpStatus.OK;
-
+        //Проводим проверки
         if (isNullOrEmpty(employeeIdHeaderValue) && isNullOrEmpty(employeeSystemHeaderValue)){
             errorMessage = String.format("Не переданы обязательные заголовки: %s и %s",employeeIdHeaderName,employeeSystemHeaderName);
             httpStatus = HttpStatus.BAD_REQUEST;
@@ -40,15 +39,13 @@ public class UserCreateService {
         } else if (isNullOrEmpty(employeeSystemHeaderValue)){
             errorMessage = String.format("Не передан обязательный заголовок: %s",employeeSystemHeaderName);
             httpStatus = HttpStatus.BAD_REQUEST;
-        }
-        else if (employeeSystemHeaderValue.length()!=4){
+        } else if (employeeSystemHeaderValue.length()!=4){
             errorMessage = String.format("Длина значения заголовка: %s должна быть равна 4 символам",employeeSystemHeaderName);
             httpStatus = HttpStatus.BAD_REQUEST;
         } else {
             try {
                 Integer employeeIdValue = Integer.parseInt(employeeIdHeaderValue);
-                //TODO: специальный баг. В требованиях значение 100 разрешено
-                if (employeeIdValue<1 || employeeIdValue>=100){
+                if (employeeIdValue<1 || employeeIdValue>100){
                     errorMessage = String.format("Значение заголовка: %s должно быть в интервале от 1 до 100 включительно",employeeIdHeaderName);
                     httpStatus = HttpStatus.BAD_REQUEST;
                 }
@@ -66,16 +63,29 @@ public class UserCreateService {
         String errorMessage = "";
         HttpStatus httpStatus = HttpStatus.OK;
         // пытаемся сконвертить юзера
-        UserCreateRqBody user = new UserCreateRqBody();
+        UserUpdateRqBody user = new UserUpdateRqBody();
         try {
-            user = convertJsonToObject(requestBody, UserCreateRqBody.class);
+            user = convertJsonToObject(requestBody, UserUpdateRqBody.class);
         } catch (Exception e) {
-            errorMessage = String.format("Не удалось конвертировать тело запроса в класс UserCreateRqBody. Полный текст ошибки: %s",getStackTraceAsString(e));
+            errorMessage = String.format("Не удалось конвертировать тело запроса в класс UserUpdateRqBody. Полный текст ошибки: %s",getStackTraceAsString(e));
             System.out.println(getStackTraceAsString(e));
             httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
             return Pair.of(httpStatus,errorMessage);
         }
-        if (isNullOrEmpty(user.getUserName())){
+        //Пытаемся проверить является ли id в формате UUID
+        try {
+            UUID id = UUID.fromString(user.getId());
+        } catch (Exception e) {
+            errorMessage = String.format("Идентификатор пользователя: %s передан не в формате UUID",user.getId());
+            System.out.println(getStackTraceAsString(e));
+            httpStatus = HttpStatus.BAD_REQUEST;
+            return Pair.of(httpStatus,errorMessage);
+        }
+        //Пытаемся получить существующего пользователя
+        if (getUserByUuid(user.getId())==null){
+            errorMessage = String.format("Пользователя с идентификатором: %s не существует",user.getId());
+            httpStatus = HttpStatus.BAD_REQUEST;
+        } else if (isNullOrEmpty(user.getUserName())){
             errorMessage = String.format("Поле %s является обязательным для заполнения",userNameFieldName);
             httpStatus = HttpStatus.BAD_REQUEST;
         } else if (isNullOrEmpty(user.getUserSurname())){
@@ -96,8 +106,8 @@ public class UserCreateService {
         } else if (!isValidEmail(user.getUserMail())){
             errorMessage = String.format("Поле %s имеет некорректный формат",userMailFieldName);
             httpStatus = HttpStatus.BAD_REQUEST;
-        } else if (!isEmailUnique(user.getUserMail())){
-            errorMessage = String.format("Значение e-mail: %s не является уникальным",user.getUserMail());
+        } else if (!isEmailUniqueComparingToOtherUsers(user.getUserMail(),user.getId())){
+            errorMessage = String.format("Значение e-mail: %s не является уникальным и принадлежит другому пользователю",user.getUserMail());
             httpStatus = HttpStatus.BAD_REQUEST;
         }
         return Pair.of(httpStatus,errorMessage);
@@ -120,50 +130,50 @@ public class UserCreateService {
     }
 
 
-    public static String makeProcessingAndSuccessfulResponse(UserCreateRqBody userCreateRqBody){
-        UUID uuid = UUID.randomUUID();
+    public static String makeProcessingAndSuccessfulResponse(UserUpdateRqBody userUpdateRqBody){
         //Билдим DAO для хранилища
         UserDAO userDAO = UserDAO.builder()
-                .id(uuid.toString())
-                .userMail(userCreateRqBody.getUserMail())
-                .userName(userCreateRqBody.getUserName())
-                .userSurname(userCreateRqBody.getUserSurname())
+                .id(userUpdateRqBody.getId())
+                .userMail(userUpdateRqBody.getUserMail())
+                .userName(userUpdateRqBody.getUserName())
+                .userSurname(userUpdateRqBody.getUserSurname())
                 .build();
         //Помещаем его в хранилище
-        USERS_STORAGE.put(userCreateRqBody.getUserMail(),userDAO);
+        USERS_STORAGE.put(userUpdateRqBody.getUserMail(),userDAO);
         //Билдим ответ
-        UserCreateRsBody userCreateRsBody = UserCreateRsBody.builder()
-                .id(uuid.toString())
-                .userMail(userCreateRqBody.getUserMail())
-                .userName(userCreateRqBody.getUserName())
-                .userSurname(userCreateRqBody.getUserSurname())
+        UserUpdateRsBody userUpdateRsBody = UserUpdateRsBody.builder()
+                .id(userUpdateRqBody.getId())
+                .userMail(userUpdateRqBody.getUserMail())
+                .userName(userUpdateRqBody.getUserName())
+                .userSurname(userUpdateRqBody.getUserSurname())
                 .build();
-        return convertToJson(userCreateRsBody);
+        return convertToJson(userUpdateRsBody);
     }
 
-    public static ResponseEntity<String> makeResponseUserCreateServiceV1BasedOnProcessingResult(String employeeIdHeaderValue, String employeeSystemHeaderValue, String requestBody){
+    public static ResponseEntity<String> makeResponseUserUpdateServiceV1BasedOnProcessingResult(String employeeIdHeaderValue, String employeeSystemHeaderValue, String requestBody){
         Pair<HttpStatus,String> validationResult = makeValidation(employeeIdHeaderValue,employeeSystemHeaderValue,requestBody);
         //Для 500 ошибки
         if (validationResult.getLeft().equals(HttpStatus.INTERNAL_SERVER_ERROR)){
-            UserCreateRsErrorBody userCreateRsErrorBody = new UserCreateRsErrorBody(validationResult.getRight());
-            String resultBody = convertToJson(userCreateRsErrorBody);
+            UserUpdateRsErrorBody userUpdateRsErrorBody = new UserUpdateRsErrorBody(validationResult.getRight());
+            String resultBody = convertToJson(userUpdateRsErrorBody);
             return new ResponseEntity<>(
                     resultBody, buildDefaultHttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
         //Для 400 ошибки
         else if (validationResult.getLeft().equals(HttpStatus.BAD_REQUEST)){
-            UserCreateRsErrorBody userCreateRsErrorBody = new UserCreateRsErrorBody(validationResult.getRight());
-            String resultBody = convertToJson(userCreateRsErrorBody);
+            UserUpdateRsErrorBody userUpdateRsErrorBody = new UserUpdateRsErrorBody(validationResult.getRight());
+            String resultBody = convertToJson(userUpdateRsErrorBody);
             return new ResponseEntity<>(
                     resultBody, buildDefaultHttpHeaders(), HttpStatus.BAD_REQUEST);
         }
-         else {
+        else {
             //Если прошли все валидации - конвертируем запрос
-            UserCreateRqBody userCreateRqBody = convertJsonToObject(requestBody,UserCreateRqBody.class);
+            UserUpdateRqBody userUpdateRqBody = convertJsonToObject(requestBody,UserUpdateRqBody.class);
             //Билдим тело ответа (да, костыльно, знаю, можно было в одну строку, но мне так понятнее)
-            String responseBody = makeProcessingAndSuccessfulResponse(userCreateRqBody);
+            String responseBody = makeProcessingAndSuccessfulResponse(userUpdateRqBody);
             return new ResponseEntity<>(
                     responseBody, buildDefaultHttpHeaders(), HttpStatus.OK);
         }
     }
+
 }

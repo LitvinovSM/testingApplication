@@ -36,7 +36,7 @@ public class JsonUtil {
         objectMapper.configure(JsonParser.Feature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER,true);
         try {
             return objectMapper.readValue(json, tClass);
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Ошибка при парсинге JSON: " + e.getMessage());
         }
     }

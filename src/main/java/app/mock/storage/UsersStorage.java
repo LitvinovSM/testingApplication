@@ -2,7 +2,9 @@ package app.mock.storage;
 
 import app.mock.pojo.common.UserDAO;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**Класс хранилище для существующих пользователей*/
 public class UsersStorage {
@@ -64,4 +66,12 @@ public class UsersStorage {
     }
 
 
+    public static List<UserDAO> getUserDaoListInStorage(){
+        List<UserDAO> userDAOList = new ArrayList<>();
+        for (String key : USERS_STORAGE.keySet()) {
+            UserDAO userDAO = USERS_STORAGE.get(key);
+            userDAOList.add(userDAO);
+        }
+        return userDAOList;
+    }
 }

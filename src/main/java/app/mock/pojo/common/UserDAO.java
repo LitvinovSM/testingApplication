@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 
 @Data
 @AllArgsConstructor
@@ -24,5 +26,11 @@ public class UserDAO {
 
     @JsonProperty("userSurname")
     private String userSurname;
+
+    @JsonProperty("isVip")
+    private Boolean isVip;
+
+    @JsonProperty("expirationDate")
+    private LocalDate expirationDate;
 
 }

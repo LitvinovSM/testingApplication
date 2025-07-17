@@ -4,6 +4,9 @@ import org.springframework.http.HttpHeaders;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import static app.mock.utils.CommonConstants.CONTENT_TYPE_HEADER_NAME;
 import static app.mock.utils.CommonConstants.CONTENT_TYPE_HEADER_VALUE;
@@ -57,5 +60,20 @@ public class CommonUtil {
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);  // Записываем стек трейс в PrintWriter
         return sw.toString();   // Возвращаем в виде строки
+    }
+
+
+    public static <T> T convertStringToDateWithSomePattern(String inputDate, String inputDatePattern,Class<T> targetClass){
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(inputDatePattern);
+        T value = null;
+        if (targetClass.equals(LocalDate.class)){
+            value = (T) LocalDate.parse(inputDate,formatter);
+
+        } else if (targetClass.equals(LocalDateTime.class)){
+            value = (T) LocalDateTime.parse(inputDate,formatter);
+        } else {
+            throw new RuntimeException(String.format("Не удалось конвертировать строку: %s в формат: %s",inputDate,inputDatePattern));
+        }
+        return value;
     }
 }

@@ -1,16 +1,18 @@
 package app.mock.controllers.v2.userUpdateService.service;
 
 import app.mock.pojo.common.UserDAO;
-import app.mock.pojo.v1.userUpdate.rq.UserUpdateRqBody;
-import app.mock.pojo.v1.userUpdate.rs.UserUpdateRsBody;
-import app.mock.pojo.v1.userUpdate.rsError.UserUpdateRsErrorBody;
+import app.mock.pojo.v2.userUpdate.rq.UserUpdateRqBody;
+import app.mock.pojo.v2.userUpdate.rs.UserUpdateRsBody;
+import app.mock.pojo.v2.userUpdate.rsError.UserUpdateRsErrorBody;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static app.mock.storage.UsersStorage.*;
+import static app.mock.utils.CommonConstants.DATE_TIME_VALID_FORMAT;
 import static app.mock.utils.CommonUtil.*;
 import static app.mock.utils.JsonUtil.convertJsonToObject;
 import static app.mock.utils.JsonUtil.convertToJson;
@@ -86,11 +88,14 @@ public class UserUpdateServiceV2 {
             errorMessage = String.format("Пользователя с идентификатором: %s не существует",user.getId());
             httpStatus = HttpStatus.BAD_REQUEST;
         }
-        //TODO: специально оставил баг #2 - имя пользователя необязательное для заполнения
-//        else if (isNullOrEmpty(user.getUserName())){
-//            errorMessage = String.format("Поле %s является обязательным для заполнения",userNameFieldName);
-//            httpStatus = HttpStatus.BAD_REQUEST;
-//        }
+        else if (isNullOrEmpty(user.getUserName())){
+            errorMessage = String.format("Поле %s является обязательным для заполнения",userNameFieldName);
+            httpStatus = HttpStatus.BAD_REQUEST;
+        }
+        else if (user.getUserName().length()<2 || user.getUserName().length()>50){
+            errorMessage = String.format("Длина поля %s должна быть от 2 до 50 символов включительно",userNameFieldName);
+            httpStatus = HttpStatus.BAD_REQUEST;
+        }
         else if (isNullOrEmpty(user.getUserSurname())){
             errorMessage = String.format("Поле %s является обязательным для заполнения",userSurnameFieldName);
             httpStatus = HttpStatus.BAD_REQUEST;
@@ -111,10 +116,17 @@ public class UserUpdateServiceV2 {
             errorMessage = String.format("Значение e-mail: %s не является уникальным и принадлежит другому пользователю",user.getUserMail());
             httpStatus = HttpStatus.BAD_REQUEST;
         }
-        //TODO продолжение бага #2 выше
-        else if (user.getUserName()!=null){
-            if (user.getUserName().length()<2 || user.getUserName().length()>50){
-                errorMessage = String.format("Длина поля %s должна быть от 2 до 50 символов включительно",userNameFieldName);
+        else if (user.getExpirationDate()!=null){
+            try{
+                LocalDate expirationDate = convertStringToDateWithSomePattern(user.getExpirationDate(),DATE_TIME_VALID_FORMAT, LocalDate.class);
+                if (!expirationDate.isAfter(LocalDate.now())){
+                    //TODO: Баг №4 - якобы таймаут
+                    Thread.sleep(10000);
+                    errorMessage = String.format("На этом моменте вам надо включить воображение и представить, что если вы передаете некорректную дату (меньше или равную текущей): %s - что-то идет не так на стороне сервера или базы данных и запрос вываливается в таймаут",user.getExpirationDate());
+                    httpStatus = HttpStatus.GATEWAY_TIMEOUT;
+                }
+            } catch (Exception e) {
+                errorMessage = String.format("Значение expirationDate: %s передано в некорректном формате. Корректный формат yyyy-MM-dd",user.getExpirationDate());
                 httpStatus = HttpStatus.BAD_REQUEST;
             }
         }
@@ -131,7 +143,7 @@ public class UserUpdateServiceV2 {
             resultPair = headerVerificationResult;
         }
         Pair<HttpStatus,String> bodyVerificationResult = verifyRequestBody(requestBody);
-        if (bodyVerificationResult.getLeft().equals(HttpStatus.BAD_REQUEST) || bodyVerificationResult.getLeft().equals(HttpStatus.INTERNAL_SERVER_ERROR)){
+        if (bodyVerificationResult.getLeft().equals(HttpStatus.BAD_REQUEST) || bodyVerificationResult.getLeft().equals(HttpStatus.INTERNAL_SERVER_ERROR) || bodyVerificationResult.getLeft().equals(HttpStatus.GATEWAY_TIMEOUT)){
             resultPair = bodyVerificationResult;
         }
         return resultPair;
@@ -145,7 +157,12 @@ public class UserUpdateServiceV2 {
                 .userMail(userUpdateRqBody.getUserMail())
                 .userName(userUpdateRqBody.getUserName())
                 .userSurname(userUpdateRqBody.getUserSurname())
+                .isVip(userUpdateRqBody.getIsVip())
                 .build();
+        if (userUpdateRqBody.getExpirationDate()!=null){
+            //TODO Баг №5 - "разрабочик" почему то решил минусовать один день в ответ
+            userDAO.setExpirationDate(convertStringToDateWithSomePattern(userUpdateRqBody.getExpirationDate(),DATE_TIME_VALID_FORMAT, LocalDate.class).minusDays(1));
+        }
         //Помещаем его в хранилище
         USERS_STORAGE.put(userUpdateRqBody.getUserMail(),userDAO);
         //Билдим ответ
@@ -154,11 +171,14 @@ public class UserUpdateServiceV2 {
                 .userMail(userUpdateRqBody.getUserMail())
                 .userName(userUpdateRqBody.getUserName())
                 .userSurname(userUpdateRqBody.getUserSurname())
+                .isVip(userUpdateRqBody.getIsVip())
+                //TODO продолжение бага №5
+                .expirationDate(userDAO.getExpirationDate().toString())
                 .build();
         return convertToJson(userUpdateRsBody);
     }
 
-    public static ResponseEntity<String> makeResponseUserUpdateServiceV1BasedOnProcessingResult(String employeeIdHeaderValue, String employeeSystemHeaderValue, String requestBody){
+    public static ResponseEntity<String> makeResponseUserUpdateServiceV2BasedOnProcessingResult(String employeeIdHeaderValue, String employeeSystemHeaderValue, String requestBody){
         Pair<HttpStatus,String> validationResult = makeValidation(employeeIdHeaderValue,employeeSystemHeaderValue,requestBody);
         //Для 500 ошибки
         if (validationResult.getLeft().equals(HttpStatus.INTERNAL_SERVER_ERROR)){
@@ -166,6 +186,13 @@ public class UserUpdateServiceV2 {
             String resultBody = convertToJson(userUpdateRsErrorBody);
             return new ResponseEntity<>(
                     resultBody, buildDefaultHttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        //TODO продолжение бага №4
+        if (validationResult.getLeft().equals(HttpStatus.GATEWAY_TIMEOUT)){
+            UserUpdateRsErrorBody userUpdateRsErrorBody = new UserUpdateRsErrorBody(validationResult.getRight());
+            String resultBody = convertToJson(userUpdateRsErrorBody);
+            return new ResponseEntity<>(
+                    resultBody, buildDefaultHttpHeaders(), HttpStatus.GATEWAY_TIMEOUT);
         }
         //Для 400 ошибки
         else if (validationResult.getLeft().equals(HttpStatus.BAD_REQUEST)){

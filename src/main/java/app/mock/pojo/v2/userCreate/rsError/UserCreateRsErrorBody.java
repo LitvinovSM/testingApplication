@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class UserCreateRsErrorBody{
 
-	@JsonProperty("error")
+	//TODO баг № 7 - несоответствие контракту, поле должно называться просто error
+	@JsonProperty("errorMessage")
 	private String error;
 }

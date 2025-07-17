@@ -1,0 +1,43 @@
+Создание:
+
+curl --location 'http://localhost:8083/v1/userCreate' \
+--header 'employeeId: 1' \
+--header 'employeeSystem: 2121' \
+--header 'Content-Type: application/json' \
+--data-raw '		{
+			"userName": "Сергей",
+			"userSurname": "Литвинов",
+			"userMail": "example1111111@mail.com"
+
+		}'
+
+
+
+Изменение:
+
+curl --location --request PUT 'http://localhost:8083/v1/userUpdate' \
+--header 'employeeId: 100' \
+--header 'employeeSystem: 2121' \
+--header 'Content-Type: application/json' \
+--data-raw '		{
+            "id":"89939444-c813-4cd0-acc5-c99a37536333",
+            "userName": "Сергей",
+			"userSurname": "Литвинов",
+			"userMail": "mai@mail.ru"
+		}'
+
+
+Удаление:
+curl --location --request DELETE 'http://localhost:8083/v1/userDelete' \
+--header 'employeeId: 100' \
+--header 'employeeSystem: 2121' \
+--header 'Content-Type: application/json' \
+--data '		{
+            "id":"f4197280-1d0a-4d7c-a5e0-87d1ff5ae3a2"
+		}'
+
+
+Получение:
+curl --location 'http://localhost:8083/v1/userGetList' \
+--header 'employeeId: 100' \
+--header 'employeeSystem: 2121'

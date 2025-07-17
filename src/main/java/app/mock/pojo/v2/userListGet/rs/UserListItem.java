@@ -29,4 +29,7 @@ public class UserListItem{
 
 	@JsonProperty("expirationDate")
 	private String expirationDate;
+
+	@JsonProperty("isExpired")
+	private Boolean isExpired;
 }

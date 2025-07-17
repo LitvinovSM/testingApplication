@@ -2,14 +2,15 @@ package app.mock.controllers.v2.userGetListService.service;
 
 
 import app.mock.pojo.common.UserDAO;
-import app.mock.pojo.v1.userListGet.rs.UserListGetRsBody;
-import app.mock.pojo.v1.userListGet.rs.UserListItem;
-import app.mock.pojo.v1.userListGet.rsError.UserListGetRsErrorBody;
-import app.mock.pojo.v1.userUpdate.rsError.UserUpdateRsErrorBody;
+import app.mock.pojo.v2.userListGet.rs.UserListGetRsBody;
+import app.mock.pojo.v2.userListGet.rs.UserListItem;
+import app.mock.pojo.v2.userListGet.rsError.UserListGetRsErrorBody;
+import app.mock.pojo.v2.userUpdate.rsError.UserUpdateRsErrorBody;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -83,7 +84,21 @@ public class UserGetListServiceV2 {
                     .userName(userDAO.getUserName())
                     .userSurname(userDAO.getUserSurname())
                     .userMail(userDAO.getUserMail())
+                    .isVip(userDAO.getIsVip())
                     .build();
+            //Заполняем дату
+            if (userDAO.getExpirationDate()!=null){
+                userListItem.setExpirationDate(userDAO.getExpirationDate().toString());
+            } else {
+                userListItem.setExpirationDate(null);
+            }
+            //Заполняем виртуально вычисляемый признак истечения срока действия
+            //TODO Баг №6 - некорректно вычисляем признак isExpired (ставим признак истекшего, если дата завтрашняя)
+            if (userDAO.getExpirationDate()!=null && !userDAO.getExpirationDate().isAfter(LocalDate.now().plusDays(1))){
+                userListItem.setIsExpired(true);
+            } else {
+                userListItem.setIsExpired(false);
+            }
             userListItems.add(userListItem);
         }
         //Билдим полный ответ
@@ -92,7 +107,7 @@ public class UserGetListServiceV2 {
         return convertToJson(userListGetRsBody);
     }
 
-    public static ResponseEntity<String> makeResponseUserGetListServiceV1BasedOnProcessingResult(String employeeIdHeaderValue, String employeeSystemHeaderValue){
+    public static ResponseEntity<String> makeResponseUserGetListServiceV2BasedOnProcessingResult(String employeeIdHeaderValue, String employeeSystemHeaderValue){
         Pair<HttpStatus,String> validationResult = makeValidation(employeeIdHeaderValue,employeeSystemHeaderValue);
         //Для 500 ошибки
         if (validationResult.getLeft().equals(HttpStatus.INTERNAL_SERVER_ERROR)){

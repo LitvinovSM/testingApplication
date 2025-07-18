@@ -61,6 +61,7 @@ public class UsersStorage {
         for (String key : USERS_STORAGE.keySet()) {
             if (USERS_STORAGE.get(key).getId().equalsIgnoreCase(uuid)){
                 USERS_STORAGE.remove(key);
+                break;
             }
         }
     }

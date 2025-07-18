@@ -172,9 +172,12 @@ public class UserUpdateServiceV2 {
                 .userName(userUpdateRqBody.getUserName())
                 .userSurname(userUpdateRqBody.getUserSurname())
                 .isVip(userUpdateRqBody.getIsVip())
-                //TODO продолжение бага №5
-                .expirationDate(userDAO.getExpirationDate().toString())
+
                 .build();
+        if (userUpdateRqBody.getExpirationDate()!=null) {
+            //TODO продолжение бага №5
+            userUpdateRsBody.setExpirationDate(userDAO.getExpirationDate().toString());
+        }
         return convertToJson(userUpdateRsBody);
     }
 
